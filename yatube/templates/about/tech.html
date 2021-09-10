@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+    О технологиях
+{% endblock %}
+
+{% block content %}
+    <div class="row justify-content-center">
+    <div class="col-md-8 p-5">
+      <div class="card">
+        <div class="card-header">
+          О технологиях 
+        </div>
+        <div class="card-body" align="justify">
+
+            <p align="center"><b>Какие технологии были использованы при создании этого сайта:</b></p>
+            <div class="row">
+                <div class="col-6">
+                    <div class="card">
+                        <img src="{% static 'img/about/python_logo_320x190.png' %}" class="card-img-top">
+                        <div class="card-body" style="background: #3d83bc">
+                            <p class="card-text text-white"><b>Python</b> — очень популярный язык программирования, 
+                            и не зря: он легкий в освоении, очень гибкий, имеет большую массу 
+                            готовых модулей на любой случай жизни, имеет огромное сообщество, которое 
+                            с радостью делится необходимой литературой и генерирует массу полезного 
+                            контента о его применении.<br><br></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="card">
+                        <img src="{% static 'img/about/django_logo_320x190.png' %}" class="card-img-top">
+                        <div class="card-body" style="background: #008259">
+                            <p class="card-text text-white"><b>Django</b> — популярный, бесплатный, с открытым кодом 
+                            web-фреймворк для создания web-сервисов. В нем есть масса готовых инструментов, 
+                            позволяющих быстро и качественно поднять своё приложение. К сожалению 
+                            у меня пока нет опыта взаимодействия с другими фреймворками, 
+                            сравнить я не могу, но в django работать очень приятно.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="width:75%;margin-top:10px;">
+              <div class="card-header">
+                Программные инструменты
+              </div>
+                <ul class="list-group list-group-flush">
+                  <li class="list-group-item">Модели Django ORM</li>
+                  <li class="list-group-item">Теги шаблонов Django</li>
+                  <li class="list-group-item">Формы с POST запросами</li>
+                  <li class="list-group-item">Встроенное приложение django.contrib.auth</li>
+                  <li class="list-group-item">Пользовательские фильтры</li>
+                  <li class="list-group-item">Paginator</li>
+                  <li class="list-group-item">Контекст-процессоры</li>
+                  <li class="list-group-item">Декораторы</li>
+                  <li class="list-group-item">Эмуляция почтового сервиса</li>
+                </ul>
+            </div>
+        </div>
+      </div>
+    </div>
+    </div>
+
+{% endblock %}
