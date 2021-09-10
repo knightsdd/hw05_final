@@ -3,9 +3,6 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.urls.base import reverse
-from django.core.cache import cache
-from django.core.cache.utils import make_template_fragment_key
-
 
 from .forms import CommentForm, PostForm
 from .models import Follow, Group, Post, User
@@ -174,6 +171,11 @@ def profile_follow(request, username):
     """Add subscription."""
 
     author = get_object_or_404(User, username=username)
+    if author==request.user:
+        return redirect(reverse('posts:profile', args=[username]))
+    if Follow.objects.filter(user=request.user).filter(author=author).exists():
+        return redirect(reverse('posts:profile', args=[username]))
+
     Follow.objects.create(
         user=request.user,
         author=author

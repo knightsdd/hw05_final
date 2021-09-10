@@ -499,7 +499,7 @@ class FollowTest(TestCase):
         new_post = Post.objects.create(
             text='Новый пост для подписчика',
             author=self.author,
-            group=self.group,  
+            group=self.group,
         )
 
         response = self.authorized_client_f.get(reverse('posts:follow_index'))
