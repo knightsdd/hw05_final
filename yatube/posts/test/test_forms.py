@@ -49,7 +49,7 @@ class PostFormTest(TestCase):
             b'\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02'
             b'\x02\x4c\x01\x00\x3b'
         )
-        
+
         upload_file = SimpleUploadedFile(
             name='test_image.gif',
             content=temp_image,

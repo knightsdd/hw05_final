@@ -1,5 +1,4 @@
 from http import HTTPStatus
-from typing import Dict, List
 
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
