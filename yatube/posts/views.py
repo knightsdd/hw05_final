@@ -152,11 +152,7 @@ def follow_index(request):
     """View subscriptions."""
 
     user = User.objects.get(username=request.user.username)
-    follows = user.follower.all()
-    authors = []
-    for f in follows:
-        authors.append(f.author)
-    posts = Post.objects.filter(author__in=authors)
+    posts = Post.objects.filter(author__following__user=user)
     page_obj = make_paginator(posts, request, settings.RECORDS_PER_PAGE)
     template = 'posts/follow.html'
     context = {
@@ -171,9 +167,9 @@ def profile_follow(request, username):
     """Add subscription."""
 
     author = get_object_or_404(User, username=username)
-    if author == request.user:
-        return redirect(reverse('posts:profile', args=[username]))
-    if Follow.objects.filter(user=request.user).filter(author=author).exists():
+    if (author == request.user
+            or Follow.objects.filter(user=request.user, author=author)
+            .exists()):
         return redirect(reverse('posts:profile', args=[username]))
 
     Follow.objects.create(
@@ -189,6 +185,6 @@ def profile_unfollow(request, username):
     """Remove subscription."""
 
     author = get_object_or_404(User, username=username)
-    Follow.objects.filter(user=request.user).filter(author=author).delete()
+    Follow.objects.filter(user=request.user, author=author).delete()
 
     return redirect(reverse('posts:profile', args=[username]))

@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from posts.models import Group, Post, User
+from posts.models import Comment, Group, Post, User
 
 User = get_user_model()
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
@@ -35,11 +35,11 @@ class PostFormTest(TestCase):
         super().setUp()
         self.authorized_client = Client()
         self.authorized_client.force_login(PostFormTest.user)
-        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     @classmethod
     def tearDownClass(cls) -> None:
         super().tearDownClass()
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def test_create_post_form(self):
         """Создана новая запись в базе данных"""
@@ -68,7 +68,7 @@ class PostFormTest(TestCase):
             follow=True
         )
 
-        new_post = Post.objects.all()[0]
+        new_post = Post.objects.all().first()
         self.assertEqual(new_post.text, data_form['text'])
         self.assertEqual(new_post.group, PostFormTest.group)
         self.assertIsNotNone(new_post.image)
@@ -161,4 +161,10 @@ class AddCommentFormTest(TestCase):
             count_comments + 1,
             count_comments_after_post,
             'Комментарий должен быть добавлен'
+        )
+
+        last_comment = self.post.comments.all().first()
+
+        self.assertEqual(
+            last_comment.text, data_form['text'], 'Неверный текст комментария'
         )

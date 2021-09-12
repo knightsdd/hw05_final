@@ -1,16 +1,17 @@
 import shutil
 import tempfile
-from time import sleep
 
 from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.core.cache.utils import make_template_fragment_key
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from ..models import Follow, Group, Post
-from .utils import chek_paginator, find_post_by_text
+from ..models import Comment, Follow, Group, Post
+from .utils import chek_paginator
 
 User = get_user_model()
 
@@ -80,23 +81,23 @@ class YatubePagesTest(TestCase):
             description='Тестовое описание группы 2',
         )
 
-        cls.posts = []
-        for i in range(5):
-            cls.posts.append(
-                Post.objects.create(
-                    text=f'Автоматический текст поста {i}',
-                    author=cls.user_1,
-                    group=cls.group_1
-                )
-            )
+        cls.posts = [Post(
+                     text=f'Автоматический текст поста {i}',
+                     author=cls.user_1,
+                     group=cls.group_1,
+                     pk=i + 1)
+                     for i in range(5)]
 
         cls.posts.append(
-            Post.objects.create(
+            Post(
                 text='Тестовый текст поста 5',
                 author=cls.user_2,
                 group=cls.group_2,
+                pk=6
             )
         )
+
+        Post.objects.bulk_create(cls.posts)
         cls.authorized_client = Client()
         cls.authorized_client.force_login(cls.user_1)
 
@@ -214,24 +215,25 @@ class YatubePagesTest(TestCase):
 
     def test_cache_index_page(self):
         check_text = 'Тестируем кеширование'
-        Post.objects.create(
+        new_post = Post.objects.create(
             text=check_text,
             author=self.user_1,
             group=self.group_1
         )
+        # не дождался ответа в слаке, сделал так как обсудили с ребатами
         response = self.authorized_client.get(reverse('posts:index'))
-        page_html = response.content
-        self.assertFalse(
-            find_post_by_text(check_text, page_html),
-            'Кеш не работает'
+        key = make_template_fragment_key(
+            'index_page',
+            [response.context['page_obj']]
         )
-        sleep(20)
+        cache.delete(key)
+
         response = self.authorized_client.get(reverse('posts:index'))
-        page_html = response.content
-        self.assertTrue(
-            find_post_by_text(check_text, page_html),
-            'Кеш не работает'
-        )
+        page_1 = response.content
+        Post.objects.get(pk=new_post.pk).delete()
+        response = self.authorized_client.get(reverse('posts:index'))
+        page_2 = response.content
+        self.assertEqual(page_1, page_2, 'Кеш не работает')
 
 
 # -------------------------------------------------------------------
@@ -253,25 +255,55 @@ class PaginatorViewsTest(TestCase):
             description='Тестовое описание группы 2',
         )
 
-        cls.posts = []
-        for i in range(13):
-            cls.posts.append(
-                Post.objects.create(
-                    text=f'Автоматический текст поста {i}',
-                    author=cls.user_1,
-                    group=cls.group_1
-                )
-            )
+        cls.posts = [Post(
+                     text=f'Автоматический текст поста {i}',
+                     author=cls.user_1,
+                     group=cls.group_1,
+                     pk=i + 1
+                     ) for i in range(13)]
 
         cls.posts.append(
-            Post.objects.create(
+            Post(
                 text='Тестовый текст поста 13',
                 author=cls.user_2,
                 group=cls.group_2,
+                pk=14
             )
         )
+        Post.objects.bulk_create(cls.posts)
         cls.authorized_client = Client()
         cls.authorized_client.force_login(cls.user_1)
+
+        cls.paginator_names = [
+            [settings.RECORDS_PER_PAGE, reverse('posts:index'), ''],
+            [4, reverse('posts:index'), '?page=2'],
+            [settings.RECORDS_PER_PAGE,
+             reverse(
+                 'posts:group_list',
+                 args=[PaginatorViewsTest.group_1.slug]),
+             ''],
+            [3,
+             reverse(
+                 'posts:group_list',
+                 args=[PaginatorViewsTest.group_1.slug]),
+             '?page=2'],
+            [settings.RECORDS_PER_PAGE,
+             reverse(
+                 'posts:profile',
+                 args=[PaginatorViewsTest.user_1.username]),
+             ''],
+            [3,
+             reverse(
+                 'posts:profile',
+                 args=[PaginatorViewsTest.user_1.username]),
+             '?page=2']
+        ]
+
+    def test_paginator_on_all_pages(self):
+        for i in self.paginator_names:
+            with self.subTest(self):
+                response = self.authorized_client.get(i[1] + i[2])
+                self.assertEqual(len(response.context['page_obj']), i[0])
 
     def test_paginator_on_index_page1(self):
         """Проверка index страницы № 1."""
@@ -417,6 +449,7 @@ class CommentViewTest(TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.authorized_client = Client()
+        self.guest = Client()
         self.authorized_client.force_login(self.user)
 
     def test_post_detail_have_comment(self):
@@ -437,6 +470,18 @@ class CommentViewTest(TestCase):
         comment_text = request.context['comments'][0].text
 
         self.assertEqual(comment_text, data_form['text'])
+
+    def test_make_comment_not_acceess_for_guest(self):
+        data_form = {
+            'text': 'Тестовый комментарий',
+        }
+        count_comments = Comment.objects.all().count()
+        self.guest.post(
+            reverse('posts:add_comment', args=[self.post.pk]),
+            data_form,
+            follow=True
+        )
+        self.assertEqual(count_comments, Comment.objects.all().count())
 
 
 class FollowTest(TestCase):
@@ -467,8 +512,8 @@ class FollowTest(TestCase):
         self.authorized_client_f.force_login(self.user_follower)
         self.authorized_client_nf.force_login(self.user_not_follower)
 
-    def test_follow_unfollow(self):
-        """Тестируем подписку/отписку."""
+    def test_follow(self):
+        """Тестируем подписку."""
 
         self.authorized_client_f.get(
             reverse('posts:profile_follow', args=[self.author.username])
@@ -478,6 +523,10 @@ class FollowTest(TestCase):
                 user=self.user_follower).filter(author=self.author).exists(),
             'Подписка не работает'
         )
+
+    def test_unfollow(self):
+        """Тестируем подписку/отписку."""
+
         self.authorized_client_f.get(
             reverse('posts:profile_unfollow', args=[self.author.username])
         )
@@ -502,10 +551,7 @@ class FollowTest(TestCase):
         )
 
         response = self.authorized_client_f.get(reverse('posts:follow_index'))
-        if not response.context['page_obj']:
-            chek_post = None
-        else:
-            chek_post = response.context['page_obj'][0]
+        chek_post = response.context['page_obj'][0]
         self.assertEqual(
             new_post, chek_post,
             'Лента не работает для подписчика'
@@ -515,8 +561,7 @@ class FollowTest(TestCase):
         """Тестируем ленту подписок для неподписчика"""
 
         response = self.authorized_client_nf.get(reverse('posts:follow_index'))
-        if not response.context['page_obj']:
-            is_empty = True
-        else:
-            is_empty = False
-        self.assertTrue(is_empty, "Лента не работает для не подписчика")
+        self.assertTrue(
+            not response.context['page_obj'],
+            'Лента не работает для не подписчика'
+        )
