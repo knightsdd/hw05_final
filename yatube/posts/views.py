@@ -132,6 +132,19 @@ def post_edit(request, post_id):
 
 
 @login_required
+def post_remove(request, post_id):
+    """Delete post."""
+
+    deleted_post = get_object_or_404(Post, pk=post_id)
+    if deleted_post.author != request.user:
+        return redirect(reverse_lazy('posts:post_detail', args=[post_id]))
+
+    Post.objects.filter(pk=post_id).delete()
+    return redirect(
+        reverse_lazy('posts:profile', args=[request.user.username]))
+
+
+@login_required
 def add_comment(reqest, post_id):
     """Add a comment to the post."""
 

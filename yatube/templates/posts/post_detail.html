@@ -44,6 +44,7 @@
           </p>
           {% if post.author == user %}
             <a class="btn btn-primary" href="{% url 'posts:post_edit' post.pk %}">редактировать запись</a>
+            <a class="btn btn-primary" href="{% url 'posts:post_remove' post.pk %}">удалить запись</a>
           {% endif %}
           {% include 'includes/comments.html' %}
         </article>
