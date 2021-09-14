@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.urls.base import reverse
@@ -11,7 +12,7 @@ from .utils import make_paginator
 
 def index(request):
 
-    posts = Post.objects.all()
+    posts = Post.objects.all().annotate(comments_count=Count('comments'))
     page_obj = make_paginator(posts, request, settings.RECORDS_PER_PAGE)
     template = 'posts/index.html'
     context = {
@@ -24,7 +25,7 @@ def index(request):
 def group_posts(request, slug):
 
     group = get_object_or_404(Group, slug=slug)
-    posts = group.posts.all()
+    posts = group.posts.all().annotate(comments_count=Count('comments'))
     page_obj = make_paginator(posts, request, settings.RECORDS_PER_PAGE)
     template = 'posts/group_list.html'
     context = {
@@ -37,7 +38,9 @@ def group_posts(request, slug):
 
 def profile(request, username):
     selected_user = get_object_or_404(User, username=username)
-    posts = selected_user.posts.all()
+    posts = selected_user \
+        .posts.all() \
+        .annotate(comments_count=Count('comments'))
     count = selected_user.posts.count()
     page_obj = make_paginator(posts, request, settings.RECORDS_PER_PAGE)
     following = False
@@ -165,7 +168,10 @@ def follow_index(request):
     """View subscriptions."""
 
     user = User.objects.get(username=request.user.username)
-    posts = Post.objects.filter(author__following__user=user)
+    posts = Post \
+        .objects \
+        .filter(author__following__user=user) \
+        .annotate(comments_count=Count('comments'))
     page_obj = make_paginator(posts, request, settings.RECORDS_PER_PAGE)
     template = 'posts/follow.html'
     context = {
