@@ -25,12 +25,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'o0(gy!)15#!ntp--^ur3k^dj$i$5$m-+ug$t#0yiwts-0j*by7'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
-    'www.knightsd.pythonanywhere.com/',
-    'knightsd.pythonanywhere.com/',
-    '127.0.0.1'
+    'localhost',
+    '51.250.28.172',
 ]
 
 
